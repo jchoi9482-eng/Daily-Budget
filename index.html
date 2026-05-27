@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Weekly Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0e0f11;
+    --surface: #161719;
+    --surface2: #1e2024;
+    --border: #2a2c32;
+    --text: #f0efe8;
+    --muted: #7a7d87;
+    --hint: #45474f;
+    --green: #5ddc8e;
+    --green-dim: #1a3d2b;
+    --amber: #f5c542;
+    --amber-dim: #3b2d09;
+    --red: #f05c5c;
+    --red-dim: #3a1414;
+    --accent: #6c8fff;
+    --accent-dim: #1a2540;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+
+  /* layout */
+  .wrapper { max-width: 820px; margin: 0 auto; }
+
+  /* header */
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+  }
+  header h1 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .week-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  /* hero balance */
+  .hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem 2.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top right, rgba(108,143,255,0.07), transparent 60%);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .hero-amount {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.6rem;
+    transition: color 0.4s;
+  }
+  .hero-amount.ok { color: var(--green); }
+  .hero-amount.warn { color: var(--amber); }
+  .hero-amount.danger { color: var(--red); }
+  .hero-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .hero-sub span { color: var(--text); font-weight: 500; }
+
+  /* alert */
+  .alert {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+  }
+  .alert.show { display: flex; }
+  .alert.warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,197,66,0.25); }
+  .alert.danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(240,92,92,0.25); }
+
+  /* progress */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.4s;
+    background: var(--green);
+  }
+  .progress-fill.warn { background: var(--amber); }
+  .progress-fill.danger { background: var(--red); }
+  .progress-pct {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    min-width: 38px;
+    text-align: right;
+  }
+
+  /* stat row */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* panels */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 580px) { .panels { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+  }
+  .panel-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  /* form */
+  label { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 0.35rem; letter-spacing: 0.05em; }
+  .field { margin-bottom: 0.75rem; }
+  input[type=number], input[type=text], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    padding: 0.55rem 0.75rem;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  input[type=number]:focus, input[type=text]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  select option { background: var(--surface2); }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 0.65rem 1rem;
+    background: var(--accent);
+    color: #0a0f20;
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.98); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    width: auto;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+  /* expense list */
+  .expense-list { max-height: 260px; overflow-y: auto; }
+  .expense-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .expense-item:last-child { border-bottom: none; }
+  .cat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .exp-name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .exp-cat { font-size: 0.68rem; color: var(--hint); }
+  .exp-amt { font-weight: 500; color: var(--text); flex-shrink: 0; }
+  .del-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--hint); font-size: 1rem; line-height: 1;
+    padding: 0 2px; flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .del-btn:hover { color: var(--red); }
+  .empty { color: var(--hint); font-size: 0.8rem; padding: 1rem 0; }
+
+  /* category bars */
+  .cat-row { margin-bottom: 0.8rem; }
+  .cat-row:last-child { margin-bottom: 0; }
+  .cat-header { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; }
+  .cat-name { color: var(--muted); }
+  .cat-amt { color: var(--text); font-weight: 500; }
+  .cat-track { height: 4px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
+
+  /* week tabs */
+  .week-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+  .week-tab {
+    padding: 0.35rem 0.85rem;
+    border-radius: 7px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .week-tab:hover { background: var(--surface2); color: var(--text); }
+  .week-tab.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+
+  /* history */
+  .hist-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row:hover { opacity: 0.8; }
+  .hist-label { flex: 1; color: var(--muted); }
+  .badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-family: var(--font-mono);
+  }
+  .badge-ok { background: var(--green-dim); color: var(--green); }
+  .badge-warn { background: var(--amber-dim); color: var(--amber); }
+  .badge-over { background: var(--red-dim); color: var(--red); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  .warn-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
+  .warn-row label { margin: 0; white-space: nowrap; font-size: 0.72rem; color: var(--muted); }
+  .warn-row input { width: 60px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <h1>Budget Tracker</h1>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <span class="week-label" id="week-label-header"></span>
+      <span id="save-indicator" style="font-size:0.68rem;color:var(--hint);display:none;">✓ saved</span>
+      <button class="btn-ghost" onclick="resetAll()" style="font-size:0.68rem;color:var(--hint);border-color:var(--hint);">Reset all</button>
+    </div>
+  </header>
+
+  <!-- hero remaining balance -->
+  <div class="hero">
+    <p class="hero-label">Remaining balance</p>
+    <div class="hero-amount ok" id="hero-remaining">$0.00</div>
+    <p class="hero-sub" id="hero-sub">Set a budget to get started</p>
+
+    <div class="alert" id="alert-box">
+      <span id="alert-icon">&#9888;</span>
+      <span id="alert-msg"></span>
+    </div>
+
+    <div class="progress-row">
+      <div class="progress-track">
+        <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+      <span class="progress-pct" id="prog-pct">0%</span>
+    </div>
+
+    <!-- budget setup inline -->
+    <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);">
+      <p class="panel-title" style="margin-bottom:0.75rem;">Budget setup</p>
+      <div style="display:flex;gap:0.6rem;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;">
+          <label>Weekly limit ($)</label>
+          <input type="number" id="budget-input" placeholder="e.g. 500" min="0" step="1" />
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:0.4rem;">
+          <div>
+            <label>Warn at</label>
+            <input type="number" id="warn-pct" value="80" min="1" max="99" step="1" style="width:60px;" />
+          </div>
+          <span style="font-size:0.8rem;color:var(--muted);padding-bottom:0.6rem;">%</span>
+        </div>
+        <button class="btn" onclick="setBudget()" style="width:auto;padding:0.55rem 1.25rem;flex-shrink:0;">Set Budget</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Weekly budget</div>
+      <div class="stat-value" id="s-budget">&#8212;</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total spent</div>
+      <div class="stat-value" id="s-spent">$0.00</div>
+    </div>
+  </div>
+
+  <!-- week tabs -->
+  <div class="week-tabs" id="week-tabs"></div>
+
+  <!-- panels -->
+  <div class="panels">
+
+    <!-- left: log expense -->
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="panel">
+        <p class="panel-title">Log expense</p>
+        <div class="field">
+          <label>Category</label>
+          <select id="cat-sel">
+            <option>Food & Dining</option>
+            <option>Transport</option>
+            <option>Shopping</option>
+            <option>Entertainment</option>
+            <option>Health</option>
+            <option>Bills & Utilities</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Description (optional)</label>
+          <input type="text" id="desc-input" placeholder="e.g. Grocery run" />
+        </div>
+        <div class="field">
+          <label>Amount ($)</label>
+          <input type="number" id="amt-input" placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <button class="btn" onclick="addExpense()">Add Expense</button>
+      </div>
+    </div>
+
+    <!-- right: expense log -->
+    <div class="panel" style="display:flex;flex-direction:column;">
+      <p class="panel-title">This week's expenses</p>
+      <div class="expense-list" id="expense-list">
+        <p class="empty">No expenses yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- category breakdown -->
+  <div class="panel" style="margin-bottom:1rem;">
+    <p class="panel-title">Spending by category</p>
+    <div id="cat-breakdown"><p class="empty">Add expenses to see breakdown.</p></div>
+  </div>
+
+  <!-- history -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <p class="panel-title" style="margin:0;">Week history</p>
+      <button class="btn-ghost" onclick="addWeek()">+ New week</button>
+    </div>
+    <div id="hist-list"><p class="empty">Past weeks will appear here.</p></div>
+  </div>
+
+</div>
+
+<script>
+const CAT_COLORS = {
+  'Food & Dining': '#6c8fff',
+  'Transport': '#5ddc8e',
+  'Shopping': '#c77aff',
+  'Entertainment': '#f5c542',
+  'Health': '#5dcbca',
+  'Bills & Utilities': '#f07c5c',
+  'Other': '#7a7d87'
+};
+
+function weekLabel(offsetWeeks) {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfThisWeek = new Date(now);
+  startOfThisWeek.setDate(now.getDate() - dayOfWeek);
+  const start = new Date(startOfThisWeek);
+  start.setDate(startOfThisWeek.getDate() - offsetWeeks * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return fmt(start) + ' – ' + fmt(end);
+}
+
+const STORAGE_KEY = 'budget-tracker-v1';
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const ind = document.getElementById('save-indicator');
+    if (ind) { ind.style.display = 'inline'; clearTimeout(ind._t); ind._t = setTimeout(() => ind.style.display = 'none', 1800); }
+  } catch(e) {}
+}
+
+function resetAll() {
+  if (!confirm('Clear all data and start fresh?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = { budget: 0, warnPct: 80, currentWeek: 0, weeks: [{ label: weekLabel(0), expenses: [] }] };
+  document.getElementById('warn-pct').value = 80;
+  render();
+}
+
+const saved = loadState();
+let state = saved || {
+  budget: 0,
+  warnPct: 80,
+  currentWeek: 0,
+  weeks: [{ label: weekLabel(0), expenses: [] }]
+};
+
+if (saved && saved.warnPct) {
+  document.getElementById('warn-pct').value = saved.warnPct;
+}
+
+function curExpenses() { return state.weeks[state.currentWeek].expenses; }
+function totalSpent() { return curExpenses().reduce((s, e) => s + e.amount, 0); }
+
+function setBudget() {
+  const v = parseFloat(document.getElementById('budget-input').value);
+  if (!v || v <= 0) return;
+  state.budget = v;
+  state.warnPct = parseInt(document.getElementById('warn-pct').value) || 80;
+  document.getElementById('budget-input').value = '';
+  saveState();
+  render();
+}
+
+function addExpense() {
+  const cat = document.getElementById('cat-sel').value;
+  const desc = document.getElementById('desc-input').value.trim();
+  const amount = parseFloat(document.getElementById('amt-input').value);
+  if (!amount || amount <= 0) return;
+  curExpenses().push({ cat, desc, amount, id: Date.now() });
+  document.getElementById('amt-input').value = '';
+  document.getElementById('desc-input').value = '';
+  saveState();
+  render();
+}
+
+function delExpense(id) {
+  state.weeks[state.currentWeek].expenses = curExpenses().filter(e => e.id !== id);
+  saveState();
+  render();
+}
+
+function addWeek() {
+  state.weeks.unshift({ label: weekLabel(state.weeks.length), expenses: [] });
+  state.currentWeek = 0;
+  saveState();
+  render();
+}
+
+function switchWeek(i) {
+  state.currentWeek = i;
+  saveState();
+  render();
+}
+
+function fmt(n) { return '$' + Math.abs(n).toFixed(2); }
+
+function render() {
+  const spent = totalSpent();
+  const budget = state.budget;
+  const remaining = budget - spent;
+  const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+  const warnPct = parseInt(document.getElementById('warn-pct').value) || 80;
+  const isOver = budget > 0 && spent > budget;
+  const isWarn = !isOver && budget > 0 && pct >= warnPct;
+  const isOk = !isOver && !isWarn;
+
+  // header week label
+  document.getElementById('week-label-header').textContent = state.weeks[state.currentWeek].label;
+
+  // hero
+  const heroEl = document.getElementById('hero-remaining');
+  heroEl.textContent = (remaining < 0 ? '-' : '') + fmt(remaining);
+  heroEl.className = 'hero-amount ' + (isOver ? 'danger' : isWarn ? 'warn' : 'ok');
+
+  const sub = document.getElementById('hero-sub');
+  if (budget > 0) {
+    sub.innerHTML = `<span>${fmt(spent)}</span> spent of <span>${fmt(budget)}</span> budget`;
+  } else {
+    sub.innerHTML = 'Set a budget to get started';
+  }
+
+  // alert
+  const alertBox = document.getElementById('alert-box');
+  const alertMsg = document.getElementById('alert-msg');
+  alertBox.className = 'alert';
+  if (isOver) {
+    alertBox.classList.add('show', 'danger');
+    alertMsg.textContent = `You're $${(spent - budget).toFixed(2)} over your budget this week.`;
+  } else if (isWarn) {
+    alertBox.classList.add('show', 'warn');
+    alertMsg.textContent = `${pct.toFixed(0)}% of budget used — only ${fmt(remaining)} remaining.`;
+  }
+
+  // progress
+  const fill = document.getElementById('prog-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'progress-fill' + (isOver ? ' danger' : isWarn ? ' warn' : '');
+  document.getElementById('prog-pct').textContent = pct.toFixed(0) + '%';
+
+  // stats
+  document.getElementById('s-budget').textContent = budget > 0 ? fmt(budget) : '—';
+  document.getElementById('s-spent').textContent = fmt(spent);
+
+  // week tabs
+  const tabsEl = document.getElementById('week-tabs');
+  tabsEl.innerHTML = state.weeks.map((w, i) =>
+    `<button class="week-tab${i === state.currentWeek ? ' active' : ''}" onclick="switchWeek(${i})">${w.label}</button>`
+  ).join('');
+
+  // expense list
+  const listEl = document.getElementById('expense-list');
+  const exps = curExpenses();
+  if (!exps.length) {
+    listEl.innerHTML = '<p class="empty">No expenses logged yet.</p>';
+  } else {
+    listEl.innerHTML = [...exps].reverse().map(e =>
+      `<div class="expense-item">
+        <div class="cat-dot" style="background:${CAT_COLORS[e.cat]||'#888'}"></div>
+        <span class="exp-name">${e.desc || e.cat}</span>
+        <span class="exp-cat">${e.desc ? e.cat : ''}</span>
+        <span class="exp-amt">${fmt(e.amount)}</span>
+        <button class="del-btn" onclick="delExpense(${e.id})" aria-label="Delete">×</button>
+      </div>`
+    ).join('');
+  }
+
+  // category breakdown
+  const catEl = document.getElementById('cat-breakdown');
+  const catMap = {};
+  exps.forEach(e => { catMap[e.cat] = (catMap[e.cat] || 0) + e.amount; });
+  const cats = Object.entries(catMap).sort((a,b) => b[1]-a[1]);
+  if (!cats.length) {
+    catEl.innerHTML = '<p class="empty">Add expenses to see breakdown.</p>';
+  } else {
+    const max = cats[0][1];
+    catEl.innerHTML = cats.map(([cat, amt]) =>
+      `<div class="cat-row">
+        <div class="cat-header">
+          <span class="cat-name">${cat}</span>
+          <span class="cat-amt">${fmt(amt)}</span>
+        </div>
+        <div class="cat-track">
+          <div class="cat-fill" style="width:${(amt/max*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#888'}"></div>
+        </div>
+      </div>`
+    ).join('');
+  }
+
+  // history
+  const histEl = document.getElementById('hist-list');
+  const past = state.weeks.filter((_, i) => i !== state.currentWeek);
+  if (!past.length) {
+    histEl.innerHTML = '<p class="empty">Past weeks will appear here.</p>';
+  } else {
+    histEl.innerHTML = past.map(w => {
+      const wSpent = w.expenses.reduce((s, e) => s + e.amount, 0);
+      const wPct = budget > 0 ? (wSpent / budget * 100) : 0;
+      const idx = state.weeks.indexOf(w);
+      const badgeClass = wPct >= 100 ? 'badge-over' : wPct >= warnPct ? 'badge-warn' : 'badge-ok';
+      const badgeLabel = wPct >= 100 ? 'Over' : wPct >= warnPct ? 'Near limit' : 'On track';
+      return `<div class="hist-row" onclick="switchWeek(${idx})">
+        <span class="hist-label">${w.label}</span>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+        <span style="color:var(--text);font-size:0.8rem;font-weight:500;">${fmt(wSpent)}</span>
+        ${budget > 0 ? `<span style="color:var(--hint);font-size:0.72rem;">/ ${fmt(budget)}</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+}
+
+render();
+</script>
+</body>
+</html>
